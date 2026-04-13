@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChurnSight — Streaming Churn Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #f5f3ef;
+            --surface: #ffffff;
+            --surface2: #f0ede8;
+            --border: #e2ddd7;
+            --border2: #ccc8c0;
+            --text: #1a1815;
+            --muted: #7a7570;
+            --accent: #1a1815;
+            --high: #c0392b;
+            --high-bg: #fdf0ef;
+            --med: #c47d00;
+            --med-bg: #fdf8ee;
+            --low: #1e7e5e;
+            --low-bg: #edf7f3;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --display: 'Syne', sans-serif;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* NAV */
+        nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            height: 56px;
+            gap: 2rem;
+        }
+        .logo {
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo-dot {
+            width: 8px; height: 8px;
+            background: var(--text);
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .nav-links {
+            display: flex;
+            gap: 0;
+            margin-left: 1rem;
+        }
+        .nav-btn {
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .nav-btn:hover { color: var(--text); background: var(--surface2); }
+        .nav-btn.active { color: var(--text); background: var(--surface2); }
+        .nav-tag {
+            margin-left: auto;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            background: var(--surface2);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        /* PAGES */
+        .page { display: none; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+        .page.active { display: block; }
+
+        /* PAGE HEADER */
+        .page-header { margin-bottom: 2rem; }
+        .page-title {
+            font-family: var(--display);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+        .page-sub { color: var(--muted); font-size: 13px; }
+
+        /* CARDS */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .card-title {
+            font-family: var(--display);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+
+        /* STAT CARDS */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+        }
+        .stat-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-family: var(--display);
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+        .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+        /* BUTTONS */
+        .btn {
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border2);
+            cursor: pointer;
+            background: var(--surface);
+            color: var(--text);
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover { background: var(--surface2); }
+        .btn-primary {
+            background: var(--text);
+            color: var(--bg);
+            border-color: var(--text);
+        }
+        .btn-primary:hover { opacity: 0.85; }
+
+        /* TABLE */
+        .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { background: var(--surface2); }
+        th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--surface2); }
+
+        /* RISK BADGES */
+        .badge {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            letter-spacing: 0.04em;
+        }
+        .badge-high { background: var(--high-bg); color: var(--high); border: 1px solid #f0c0bd; }
+        .badge-med  { background: var(--med-bg);  color: var(--med);  border: 1px solid #f0dfa0; }
+        .badge-low  { background: var(--low-bg);  color: var(--low);  border: 1px solid #b0dece; }
+
+        /* PROB BAR */
+        .prob-bar-wrap { display: flex; align-items: center; gap: 8px; }
+        .prob-bar-bg { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; max-width: 80px; }
+        .prob-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+        /* CHART BARS */
+        .dist-chart { display: flex; align-items: flex-end; gap: 8px; height: 80px; margin: 1rem 0 0.5rem; }
+        .dist-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .dist-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s; }
+        .dist-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+        /* FORM */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .form-group input, .form-group select {
+            font-family: var(--sans);
+            font-size: 13px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--text); }
+
+        /* RESULT PANEL */
+        .result-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .result-prob {
+            font-family: var(--display);
+            font-size: 64px;
+            font-weight: 800;
+            letter-spacing: -3px;
+            line-height: 1;
+            margin: 1rem 0 0.5rem;
+        }
+
+        /* FACTOR BARS */
+        .factor-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .factor-name { font-size: 12px; color: var(--muted); width: 140px; flex-shrink: 0; font-family: var(--mono); }
+        .factor-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .factor-bar-fill { height: 100%; border-radius: 3px; }
+        .factor-val { font-size: 12px; font-family: var(--mono); color: var(--text); width: 36px; text-align: right; flex-shrink: 0; }
+
+        /* TOOLBAR */
+        .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; }
+        .filter-btn {
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            font-family: var(--sans);
+            transition: all 0.15s;
+        }
+        .filter-btn:hover, .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .mono { font-family: var(--mono); }
+
+        @media (max-width: 700px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .form-grid, .two-col { grid-template-columns: 1fr; }
+            .page { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo">
+        <span class="logo-dot"></span>
+        ChurnSight
+    </div>
+    <div class="nav-links">
+        <button class="nav-btn active" onclick="showPage('batch', this)">Batch Prediction</button>
+        <button class="nav-btn" onclick="showPage('individual', this)">Individual Prediction</button>
+    </div>
+    <span class="nav-tag" id="model-tag">XGB · v1.0</span>
+</nav>
+
+<!-- ═══════════════════════════════════════════ BATCH PAGE -->
+<div class="page active" id="page-batch">
+    <div class="page-header">
+        <div class="page-title">Batch Prediction</div>
+        <div class="page-sub">Upload a CSV of customer data to get churn probabilities at scale</div>
+    </div>
+
+    <!-- CSV Upload -->
+    <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-title">Upload predictions</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:200px">
+                <input type="file" id="csv-upload" accept=".csv" placeholder="Select CSV file" style="padding:8px;border:1px solid var(--border);border-radius:8px;width:100%"/>
+            </div>
+            <button class="btn btn-primary" onclick="uploadCSV()">Run predictions</button>
+            <button class="btn" onclick="downloadTemplate()">Download template</button>
+        </div>
+        <div id="upload-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+        <div id="upload-help" style="margin-top:8px;font-size:11px;color:var(--muted)">
+            <strong>Mode 1 (Existing Customers):</strong> CSV with <strong>msno</strong> column → features auto-looked-up from database
+            <br><strong>Mode 2 (New Customers):</strong> CSV with features (payment_count, auto_renew_rate, city, bd, etc.) → instant prediction
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total predictions</div>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-sub">from database</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">High risk</div>
+            <div class="stat-value" style="color:var(--high)" id="stat-high">—</div>
+            <div class="stat-sub">prob ≥ 0.65</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Medium risk</div>
+            <div class="stat-value" style="color:var(--med)" id="stat-med">—</div>
+            <div class="stat-sub">0.35 – 0.65</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Low risk</div>
+            <div class="stat-value" style="color:var(--low)" id="stat-low">—</div>
+            <div class="stat-sub">prob < 0.35</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="two-col" style="margin-bottom:1.5rem">
+        <div class="card">
+            <div class="card-title">Risk distribution</div>
+            <div class="dist-chart" id="dist-chart"></div>
+            <div style="display:flex;gap:16px;margin-top:8px">
+                <span style="font-size:11px;color:var(--high);font-family:var(--mono)">■ High</span>
+                <span style="font-size:11px;color:var(--med);font-family:var(--mono)">■ Medium</span>
+                <span style="font-size:11px;color:var(--low);font-family:var(--mono)">■ Low</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Probability distribution</div>
+            <div id="prob-hist" style="display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:1rem"></div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">0%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">50%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">100%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Table -->
+    <div class="toolbar">
+        <span style="font-size:12px;color:var(--muted);margin-right:4px">Filter:</span>
+        <button class="filter-btn active" onclick="filterTable('all', this)">All</button>
+        <button class="filter-btn" onclick="filterTable('high', this)">High risk</button>
+        <button class="filter-btn" onclick="filterTable('medium', this)">Medium risk</button>
+        <button class="filter-btn" onclick="filterTable('low', this)">Low risk</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)" id="row-count"></span>
+    </div>
+
+    <div class="table-wrap">
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>Customer ID (msno)</th>
+                    <th>Churn Probability</th>
+                    <th>Predicted Label</th>
+                    <th>Risk Level</th>
+                    <th>Model Alias</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Loading predictions...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ INDIVIDUAL PAGE -->
+<div class="page" id="page-individual">
+    <div class="page-header">
+        <div class="page-title">Individual Prediction</div>
+        <div class="page-sub">Enter a single customer's data to get an instant churn probability score</div>
+    </div>
+
+    <div class="two-col">
+        <div>
+            <div class="card">
+                <div class="card-title">Customer data</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Payment count</label>
+                        <input type="number" id="i-payment-count" value="10" placeholder="Total transactions"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Total payment</label>
+                        <input type="number" id="i-total-payment" value="1490" placeholder="Sum of payments"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Plan list price</label>
+                        <input type="number" id="i-plan-price" value="149" placeholder="149"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Actual amount paid</label>
+                        <input type="number" id="i-actual-paid" value="149" placeholder="149"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Auto-renew rate</label>
+                        <input type="number" id="i-auto-renew-rate" value="0.90" step="0.01" min="0" max="1" placeholder="0.0 – 1.0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Cancel rate</label>
+                        <input type="number" id="i-cancel-rate" value="0.05" step="0.01" min="0" max="1" placeholder="0.0 – 1.0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Days until expire</label>
+                        <input type="number" id="i-days-expire" value="30" placeholder="Days left on plan"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Days since registration</label>
+                        <input type="number" id="i-days-reg" value="900" placeholder="Account age in days"/>
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <select id="i-city">
+                            <option value="1">City 1</option>
+                            <option value="4" selected>City 4</option>
+                            <option value="5">City 5</option>
+                            <option value="13">City 13</option>
+                            <option value="22">City 22</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="i-age" value="28" placeholder="28"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Registered via</label>
+                        <select id="i-reg">
+                            <option value="3">iOS (3)</option>
+                            <option value="4" selected>Android (4)</option>
+                            <option value="7">Web (7)</option>
+                            <option value="9">Other (9)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment method</label>
+                        <select id="i-pay-method">
+                            <option value="1" selected>Credit card (1)</option>
+                            <option value="2">Bank transfer (2)</option>
+                            <option value="3">E-wallet (3)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top:1.25rem">
+                    <button class="btn btn-primary" id="predict-btn" onclick="runIndividual()" style="width:100%;justify-content:center">
+                        Predict churn probability
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="result-panel" id="result-panel">
+                <div style="color:var(--muted);font-size:13px;padding:3rem 0;opacity:0.6">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="display:block;margin:0 auto 12px"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    Fill in the form and click predict
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-detect backend: use same origin if served from Render, else try localhost
+const CLOUD_API = '';  // empty string = same origin (when served from Render)
+const LOCAL_API = 'http://127.0.0.1:8000';
+let API_BASE = LOCAL_API;
+let currentFilter = 'all';
+let allPredictions = [];
+let backendAvailable = false;  // tracks whether any backend (local or cloud) is reachable
+
+// ─────────────────────────────────────── DEMO FALLBACK DATA
+// Used when the backend API is not running (e.g. deployed to GitHub Pages).
+// This mirrors the shape of real API responses so all rendering code works unchanged.
+const DEMO_PREDICTIONS = [
+    {msno:'WAMleIBiN+WTtJFq5mPETFHviMOlJnEMy2snpMvV36Y=', churn_probability:0.88, predicted_label:1, model_alias:'production'},
+    {msno:'z2noQ1Q6tciQg8eMh/nuwCTB/vapo9c5U2CIYpMwV8Y=', churn_probability:0.72, predicted_label:1, model_alias:'production'},
+    {msno:'r1IzmbLU1F4j31R/+1+fX4pOPhKoCZhBKWL5k9ijdbw=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'QGOgR/yCNwHJgWzDNkiHuJAzdgvK1vWZkn8zYxMJdGQ=', churn_probability:0.35, predicted_label:0, model_alias:'production'},
+    {msno:'7IzoD+oYdtLyYccvdQ7HIU0zAInkqzqB//wjsZJLZxs=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'1VcD8BItutw+y863BP81GU1Y8LjLT1ly3EnA0szuqXo=', churn_probability:0.54, predicted_label:1, model_alias:'production'},
+    {msno:'K7KX0Fz+f4ewQk//OcxK54SCazALi5YhRRYHiDv6uZg=', churn_probability:0.20, predicted_label:0, model_alias:'production'},
+    {msno:'dnWsIex9PbV4KnbnDA5VVd3W5Bocfy2g50Ro05DH6Jw=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'D0Cw59Jse22EEP1o8JCnzgMwWQVphWGMHAGCyATdEuB=', churn_probability:0.35, predicted_label:0, model_alias:'production'},
+    {msno:'RLs7Nli1Dxu008xnMFw89QvmRzQQdW4Q2hvfAE6NeZ0=', churn_probability:0.61, predicted_label:1, model_alias:'production'},
+    {msno:'hBwOUJt4BtCPuki6L+1dudSKN1fkw9JI71LdZj6POtI=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'+geqFzV9HWpaIUd3zIP4QqcMZzKJF1wFBbxq7sPeLDY=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'vxeqQPFuc7qT2za3j5i43teagEIBP2Y/has5jnGWGU4=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+    {msno:'MiCULJEn55tG5FA0xU2pwC78SpJeNyJdVT6aaY3JmnU=', churn_probability:0.30, predicted_label:0, model_alias:'production'},
+    {msno:'wYJAUwLx+K1pdD6LX8mqbndAxyY8EdJwP2gdtf1z2Mo=', churn_probability:0.18, predicted_label:0, model_alias:'production'},
+];
+
+// ─────────────────────────────────────── PAGE NAVIGATION
+function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+
+// ─────────────────────────────────────── CSV UPLOAD & PARSING
+function downloadTemplate() {
+    // Template 1: Simple msno-only (existing customers)
+    const csv1 = `msno
+USR_001
+USR_002
+USR_003`;
+    
+    // Template 2: Full features (new customers). Extra columns like "name" are intentionally excluded.
+    const csv2 = `payment_count,total_payment,auto_renew_rate,cancel_rate,plan_list_price,days_until_expire,city,bd,registered_via,payment_count_30d,payment_count_60d,payment_count_90d,total_payment_30d,total_payment_60d,total_payment_90d,avg_payment,payment_method_id,actual_amount_paid,is_auto_renew,auto_renew_count,auto_renew_count_30d,auto_renew_count_60d,auto_renew_count_90d,cancel_count,cancel_count_30d,cancel_count_60d,cancel_count_90d,cancel_rate_30d,cancel_rate_60d,cancel_rate_90d,auto_renew_rate_30d,auto_renew_rate_60d,auto_renew_rate_90d,payment_trend_30_60,payment_trend_30_90,cancel_trend_30_90,transaction_recency_days,days_since_registration,gender
+45,6750,0.95,0.02,149,30,4,28,4,3,8,12,447,1192,1788,149,1,149,1,35,3,8,12,1,0,0,0,0.00,0.00,0.00,1.00,0.95,0.92,0.40,0.20,-0.05,3,900,male
+12,1788,0.50,0.25,149,60,1,35,3,1,2,4,149,298,596,149,2,149,0,6,0,1,2,2,1,1,1,0.50,0.50,0.25,0.50,0.45,0.40,0.10,0.05,0.20,18,600,female
+78,11700,0.98,0.01,149,90,5,22,7,8,15,28,1192,2235,4172,150,1,149,1,72,8,15,28,0,0,0,0,0.00,0.00,0.00,0.98,0.97,0.96,0.55,0.35,-0.02,1,300,unknown`;
+
+    alert(`Two CSV formats supported:\n\nMode 1 - SIMPLE (existing customers by ID):\n${csv1}\n\nMode 2 - FEATURES (new customers with data):\n${csv2}\n\nChoose your format and download below.`);
+    
+    // Let user choose which template
+    const mode = prompt("1) Simple msno lookup OR 2) Full features?", "1");
+    const csv = mode === "2" ? csv2 : csv1;
+    const filename = mode === "2" ? "churnsight_features_template.csv" : "churnsight_msno_template.csv";
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) throw new Error('CSV must have header row and at least 1 data row');
+    
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    
+    // Auto-detect mode
+    const hasMsno = header.includes('msno');
+    const hasFeatures = header.some(h => [
+        'payment_count', 'total_payment', 'auto_renew_rate', 'cancel_rate', 
+        'plan_list_price', 'days_until_expire', 'city', 'bd', 'registered_via',
+        'payment_count_30d', 'payment_count_60d', 'payment_count_90d'
+    ].includes(h));
+    
+    if (!hasMsno && !hasFeatures) {
+        throw new Error('CSV missing "msno" column (for ID lookup) or feature columns (for new customer prediction)');
+    }
+    
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cells = lines[i].split(',').map(c => c.trim());
+        const row = {};
+        
+        for (let j = 0; j < header.length; j++) {
+            const val = cells[j] || '';
+            // Try to parse as number
+            const numVal = parseFloat(val);
+            row[header[j]] = isNaN(numVal) ? val : numVal;
+        }
+        
+        rows.push(row);
+    }
+    
+    if (rows.length === 0) {
+        throw new Error('No valid data rows found in CSV');
+    }
+    
+    return { 
+        rows, 
+        mode: hasFeatures ? 'features' : 'msno',
+        hasMsno: hasMsno
+    };
+}
+
+async function uploadCSV() {
+    const fileInput = document.getElementById('csv-upload');
+    const statusDiv = document.getElementById('upload-status');
+    
+    if (!fileInput.files.length) {
+        statusDiv.innerHTML = '<span style="color:var(--high)">Please select a CSV file</span>';
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const text = await file.text();
+    
+    try {
+        const { rows, mode, hasMsno } = parseCSV(text);
+        
+        let endpoint, payload, description;
+        
+        if (mode === 'msno') {
+            // Mode 1: Simple msno lookup - predict on existing customers
+            endpoint = '/predict-batch';
+            payload = { msno: rows.map(r => r.msno), write_to_mysql: false };
+            description = `Predicting ${rows.length} existing customers by ID (features from database)`;
+        } else {
+            // Mode 2: Full features - predict on new customers
+            endpoint = '/predict-features';
+            payload = { features: rows, write_to_mysql: false };
+            description = `Predicting ${rows.length} new customers based on provided features`;
+        }
+        
+        statusDiv.innerHTML = `<span style="color:var(--muted)">Processing... ${description}</span>`;
+
+        let allResults;
+
+        if (backendAvailable) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`Prediction failed: ${response.status} ${err}`);
+            }
+            const data = await response.json();
+            allResults = data.predictions || [];
+        } else {
+            // Demo mode — score each row with the heuristic
+            allResults = rows.map((r, idx) => {
+                const p = mode === 'features' ? demoIndividualScore(r) : (0.10 + Math.random() * 0.70);
+                return { msno: r.msno || `DEMO_${idx+1}`, churn_probability: Math.round(p*100)/100,
+                         predicted_label: p >= 0.55 ? 1 : 0, model_alias: 'production' };
+            });
+        }
+
+        allPredictions = allResults;
+        
+        renderTable(allPredictions);
+
+        const high = allPredictions.filter(p => riskLabel(p.churn_probability) === 'high').length;
+        const med = allPredictions.filter(p => riskLabel(p.churn_probability) === 'medium').length;
+        const low = allPredictions.filter(p => riskLabel(p.churn_probability) === 'low').length;
+
+        document.getElementById('stat-total').textContent = allPredictions.length;
+        document.getElementById('stat-high').textContent = high;
+        document.getElementById('stat-med').textContent = med;
+        document.getElementById('stat-low').textContent = low;
+        
+        // Create summary object for charts
+        const summary = {
+            risk_distribution: { high, medium: med, low },
+            probability_buckets: createBuckets(allPredictions)
+        };
+        renderDistributionChart(summary);
+        renderProbabilityHistogram(summary);
+        
+        const modeLabel = mode === 'msno' ? '(ID lookup)' : '(features)';
+        const demoTag = backendAvailable ? '' : ' [demo]';
+        statusDiv.innerHTML = `<span style="color:var(--low)">✓ Successfully predicted ${allPredictions.length} customers ${modeLabel}${demoTag}</span>`;
+        fileInput.value = '';
+        
+    } catch (err) {
+        statusDiv.innerHTML = `<span style="color:var(--high)">Error: ${err.message}</span>`;
+        console.error('CSV upload error:', err);
+    }
+}
+
+function createBuckets(predictions) {
+    const buckets = Array(10).fill(0);
+    predictions.forEach(p => {
+        const prob = parseFloat(p.churn_probability);
+        const idx = Math.min(9, Math.floor(prob * 10));
+        buckets[idx]++;
+    });
+    
+    return buckets.map((count, i) => ({
+        bucket: `${(i/10).toFixed(1)}-${((i+1)/10).toFixed(1)}`,
+        count
+    }));
+}
+
+// ─────────────────────────────────────── BATCH PREDICTION
+async function loadBatchData() {
+    if (!backendAvailable) {
+        // ── Demo fallback ──
+        const summary = demoBatchSummary();
+        document.getElementById('stat-total').textContent = summary.total_predictions.toLocaleString();
+        document.getElementById('stat-high').textContent  = summary.high_risk.toLocaleString();
+        document.getElementById('stat-med').textContent   = summary.medium_risk.toLocaleString();
+        document.getElementById('stat-low').textContent   = summary.low_risk.toLocaleString();
+        document.getElementById('model-tag').textContent  = `${summary.model_name} · ${summary.model_alias}`;
+        renderDistributionChart(summary);
+        renderProbabilityHistogram(summary);
+        allPredictions = DEMO_PREDICTIONS;
+        renderTable(allPredictions);
+        return;
+    }
+    try {
+        const summary = await fetch(`${API_BASE}/dashboard-summary`).then(r => r.json());
+        document.getElementById('stat-total').textContent = summary.total_predictions.toLocaleString();
+        document.getElementById('stat-high').textContent = summary.high_risk.toLocaleString();
+        document.getElementById('stat-med').textContent = summary.medium_risk.toLocaleString();
+        document.getElementById('stat-low').textContent = summary.low_risk.toLocaleString();
+        document.getElementById('model-tag').textContent = `${summary.model_name} · ${summary.model_alias}`;
+
+        renderDistributionChart(summary);
+        renderProbabilityHistogram(summary);
+
+        const predictions = await fetch(`${API_BASE}/predictions/latest?limit=500`).then(r => r.json());
+        allPredictions = predictions.predictions || [];
+        renderTable(allPredictions);
+    } catch (err) {
+        console.error('Error loading batch data:', err);
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="5" style="color:var(--high);text-align:center">Error: ${err.message}</td></tr>`;
+    }
+}
+
+function renderDistributionChart(summary) {
+    const { risk_distribution } = summary;
+    const high = risk_distribution?.high || 0;
+    const med = risk_distribution?.medium || 0;
+    const low = risk_distribution?.low || 0;
+    const maxH = Math.max(high, med, low, 1);
+
+    const distChart = document.getElementById('dist-chart');
+    distChart.innerHTML = [
+        { label: 'High', count: high, color: 'var(--high)' },
+        { label: 'Med', count: med, color: 'var(--med)' },
+        { label: 'Low', count: low, color: 'var(--low)' }
+    ].map(d => {
+        const h = Math.round((d.count / maxH) * 72);
+        return `<div class="dist-bar-col">
+            <span style="font-size:10px;font-family:var(--mono);color:${d.color}">${d.count.toLocaleString()}</span>
+            <div class="dist-bar" style="height:${h}px;background:${d.color};opacity:0.8"></div>
+            <span class="dist-label">${d.label}</span>
+        </div>`;
+    }).join('');
+}
+
+function renderProbabilityHistogram(summary) {
+    const buckets = summary.probability_buckets || [];
+    const maxB = Math.max(...buckets.map(b => b.count || 0), 1);
+    
+    const hist = document.getElementById('prob-hist');
+    hist.innerHTML = buckets.map((b, i) => {
+        const mid = i / 10 + 0.05;
+        const h = Math.max(2, Math.round((b.count / maxB) * 72));
+        const color = mid >= 0.65 ? 'var(--high)' : mid >= 0.35 ? 'var(--med)' : 'var(--low)';
+        return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px 2px 0 0;opacity:0.75;min-width:0"></div>`;
+    }).join('');
+}
+
+function riskLabel(prob) {
+    return prob >= 0.65 ? 'high' : prob >= 0.35 ? 'medium' : 'low';
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('table-body');
+    const filtered = currentFilter === 'all' ? data : data.filter(r => riskLabel(r.churn_probability) === currentFilter);
+    
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No predictions found.</td></tr>';
+        document.getElementById('row-count').textContent = '0 customers';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(row => {
+        const prob = parseFloat(row.churn_probability);
+        const risk = riskLabel(prob);
+        const pct = Math.round(prob * 100);
+        const color = risk === 'high' ? 'var(--high)' : risk === 'medium' ? 'var(--med)' : 'var(--low)';
+        const badgeClass = `badge-${risk}`;
+        const label = risk.charAt(0).toUpperCase() + risk.slice(1);
+        return `
+            <tr>
+                <td class="mono" style="font-size:12px">${row.msno || '—'}</td>
+                <td>
+                    <div class="prob-bar-wrap">
+                        <span class="mono" style="font-size:12px;width:34px;color:${color}">${pct}%</span>
+                        <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+                    </div>
+                </td>
+                <td>${row.predicted_label ?? '—'}</td>
+                <td><span class="badge ${badgeClass}">${label}</span></td>
+                <td>${row.model_alias || 'production'}</td>
+            </tr>`;
+    }).join('');
+
+    document.getElementById('row-count').textContent = filtered.length + ' customers';
+}
+
+function filterTable(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable(allPredictions);
+}
+
+// ─────────────────────────────────────── INDIVIDUAL PREDICTION
+// Calls the backend /predict-features API with one customer's features.
+// The backend loads the production ML model from MLflow and scores the
+// feature vector.  Missing columns are automatically imputed by the API
+// using median / mode values from the training data, so we only need to
+// send the fields the user actually filled in.
+async function runIndividual() {
+    const btn = document.getElementById('predict-btn');
+    const panel = document.getElementById('result-panel');
+
+    // 1. Collect form values and map them to the exact column names
+    //    that the trained model expects (see curated_kkbox_final_features).
+    const features = {
+        payment_count:        parseFloat(document.getElementById('i-payment-count').value)  || 0,
+        total_payment:        parseFloat(document.getElementById('i-total-payment').value)   || 0,
+        plan_list_price:      parseFloat(document.getElementById('i-plan-price').value)      || 149,
+        actual_amount_paid:   parseFloat(document.getElementById('i-actual-paid').value)     || 149,
+        auto_renew_rate:      parseFloat(document.getElementById('i-auto-renew-rate').value) || 0,
+        cancel_rate:          parseFloat(document.getElementById('i-cancel-rate').value)     || 0,
+        days_until_expire:    parseFloat(document.getElementById('i-days-expire').value)     || 0,
+        days_since_registration: parseFloat(document.getElementById('i-days-reg').value)     || 0,
+        city:                 parseFloat(document.getElementById('i-city').value)            || 1,
+        bd:                   parseFloat(document.getElementById('i-age').value)             || 25,
+        registered_via:       parseFloat(document.getElementById('i-reg').value)             || 4,
+        payment_method_id:    parseFloat(document.getElementById('i-pay-method').value)      || 1
+    };
+
+    // Derive a few helper columns the model may look for
+    features.avg_payment = features.payment_count > 0
+        ? features.total_payment / features.payment_count : 0;
+    features.is_auto_renew = features.auto_renew_rate >= 0.5 ? 1 : 0;
+    features.is_cancel     = features.cancel_rate    >= 0.5 ? 1 : 0;
+
+    // 2. Show a loading state while we wait for the API
+    btn.disabled = true;
+    btn.textContent = 'Scoring...';
+    panel.innerHTML = `
+        <div style="color:var(--muted);font-size:13px;padding:3rem 0;opacity:0.6">
+            Sending features to the ML model API...
+        </div>`;
+
+    try {
+        // 3. Get prediction — real API if available, heuristic fallback otherwise
+        let prob, pred;
+
+        if (backendAvailable) {
+            const response = await fetch(`${API_BASE}/predict-features`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ features: [features] })
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`API returned ${response.status}: ${errText}`);
+            }
+            const data = await response.json();
+            pred = data.predictions[0];
+            prob = parseFloat(pred.churn_probability);
+        } else {
+            // Demo mode — use lightweight heuristic
+            prob = demoIndividualScore(features);
+            pred = { churn_probability: prob, predicted_label: prob >= 0.55 ? 1 : 0,
+                     model_version: 'XGB_A (demo)', threshold_used: '0.55' };
+        }
+        const pct   = Math.round(prob * 100);
+        const risk  = prob >= 0.65 ? 'High' : prob >= 0.35 ? 'Medium' : 'Low';
+        const color = prob >= 0.65 ? 'var(--high)' : prob >= 0.35 ? 'var(--med)' : 'var(--low)';
+        const badgeCls = `badge-${risk.toLowerCase() === 'medium' ? 'med' : risk.toLowerCase()}`;
+
+        // 4. Build a ranked list of the features the user provided,
+        //    ordered by how far they deviate from "safe" defaults.
+        //    This gives a rough sense of which inputs pushed the score.
+        const featureImpact = [
+            { name: 'auto_renew_rate',   val: features.auto_renew_rate,    safe: 1.0  },
+            { name: 'cancel_rate',       val: features.cancel_rate,        safe: 0.0  },
+            { name: 'days_until_expire', val: features.days_until_expire,  safe: 90   },
+            { name: 'payment_count',     val: features.payment_count,      safe: 50   },
+            { name: 'days_since_reg',    val: features.days_since_registration, safe: 1000 },
+        ].map(f => {
+            const deviation = Math.abs(f.val - f.safe) / Math.max(Math.abs(f.safe), 1);
+            const direction = f.val < f.safe ? 1 : -1;   // 1 = risky, -1 = safe
+            return { ...f, deviation: Math.min(deviation, 1), direction };
+        }).sort((a, b) => b.deviation - a.deviation);
+
+        // 5. Render the result panel
+        panel.innerHTML = `
+            <div style="text-align:left;border-bottom:1px solid var(--border);padding-bottom:1rem;margin-bottom:1rem">
+                <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">Churn Probability (from ML model)</div>
+                <div style="display:flex;align-items:flex-end;gap:12px">
+                    <div style="font-family:var(--display);font-size:56px;font-weight:800;letter-spacing:-3px;line-height:1;color:${color}">${pct}%</div>
+                    <div style="margin-bottom:8px">
+                        <span class="badge ${badgeCls}" style="font-size:12px;padding:4px 12px">${risk} risk</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1rem">
+                <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:10px">Top Contributing Factors</div>
+                ${featureImpact.map(f => {
+                    const barColor = f.direction > 0 ? 'var(--high)' : 'var(--low)';
+                    const barW = Math.round(f.deviation * 100);
+                    return `<div class="factor-row">
+                        <span class="factor-name">${f.name}</span>
+                        <div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${barW}%;background:${barColor};opacity:0.75"></div></div>
+                        <span class="factor-val">${barW}%</span>
+                    </div>`;
+                }).join('')}
+            </div>
+
+            <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.5">
+                <strong>Model:</strong> ${pred.model_version || 'production'} &middot;
+                <strong>Threshold:</strong> ${pred.threshold_used || '0.55'} &middot;
+                <strong>Label:</strong> ${pred.predicted_label}
+                <br>
+                ${prob >= 0.65
+                    ? 'This customer shows strong churn signals. Consider a targeted retention offer immediately.'
+                    : prob >= 0.35
+                    ? 'Moderate churn risk detected. Monitor engagement and consider proactive outreach.'
+                    : 'Low churn risk. Customer appears engaged and likely to remain active.'}
+            </div>`;
+
+    } catch (err) {
+        panel.innerHTML = `
+            <div style="color:var(--high);padding:2rem;text-align:center">
+                <div style="font-size:15px;font-weight:600;margin-bottom:8px">Prediction failed</div>
+                <div style="font-size:12px">${err.message}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:8px">
+                    Make sure the FastAPI backend is running: <code>uvicorn mlops.serve:app --port 8000</code>
+                </div>
+            </div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Predict churn probability';
+    }
+}
+
+// ─────────────────────────────────────── DEMO MODE HELPERS
+function demoBatchSummary() {
+    const high = DEMO_PREDICTIONS.filter(p => riskLabel(p.churn_probability) === 'high').length;
+    const med  = DEMO_PREDICTIONS.filter(p => riskLabel(p.churn_probability) === 'medium').length;
+    const low  = DEMO_PREDICTIONS.filter(p => riskLabel(p.churn_probability) === 'low').length;
+    return {
+        total_predictions: DEMO_PREDICTIONS.length,
+        high_risk: high, medium_risk: med, low_risk: low,
+        model_name: 'XGB_A', model_alias: 'production',
+        risk_distribution: { high, medium: med, low },
+        probability_buckets: createBuckets(DEMO_PREDICTIONS)
+    };
+}
+
+function demoIndividualScore(features) {
+    // Lightweight heuristic that approximates model behaviour for demo purposes.
+    let score = 0.35;
+    if (features.auto_renew_rate < 0.5) score += 0.20;
+    if (features.cancel_rate > 0.3) score += 0.15;
+    if (features.days_until_expire < 10) score += 0.10;
+    if (features.payment_count < 10) score += 0.08;
+    if (features.days_since_registration < 200) score += 0.05;
+    score = Math.min(Math.max(score + (Math.random() * 0.04 - 0.02), 0.01), 0.99);
+    return Math.round(score * 100) / 100;
+}
+
+// ─────────────────────────────────────── INIT
+async function init() {
+    // Try same-origin first (works when served from Render), then localhost
+    for (const base of [CLOUD_API, LOCAL_API]) {
+        try {
+            const resp = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) });
+            if (resp.ok) { API_BASE = base; backendAvailable = true; break; }
+        } catch (_) { /* try next */ }
+    }
+
+    if (!backendAvailable) {
+        // Show a small banner so viewers know it's demo data
+        const banner = document.createElement('div');
+        banner.id = 'demo-banner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#000;text-align:center;padding:6px 12px;font-size:12px;font-weight:600;letter-spacing:0.03em;';
+        banner.textContent = 'DEMO MODE — showing sample data (backend API not connected)';
+        document.body.prepend(banner);
+        document.body.style.paddingTop = '32px';
+    }
+
+    await loadBatchData();
+}
+
+init();
+// Only auto-refresh when the backend is live
+setInterval(() => { if (backendAvailable) loadBatchData(); }, 30000);
+</script>
+</body>
+</html>

@@ -840,28 +840,64 @@ async function runIndividual() {
     const btn = document.getElementById('predict-btn');
     const panel = document.getElementById('result-panel');
 
-    // 1. Collect form values and map them to the exact column names
-    //    that the trained model expects (see curated_kkbox_final_features).
-    const features = {
-        payment_count:        parseFloat(document.getElementById('i-payment-count').value)  || 0,
-        total_payment:        parseFloat(document.getElementById('i-total-payment').value)   || 0,
-        plan_list_price:      parseFloat(document.getElementById('i-plan-price').value)      || 149,
-        actual_amount_paid:   parseFloat(document.getElementById('i-actual-paid').value)     || 149,
-        auto_renew_rate:      parseFloat(document.getElementById('i-auto-renew-rate').value) || 0,
-        cancel_rate:          parseFloat(document.getElementById('i-cancel-rate').value)     || 0,
-        days_until_expire:    parseFloat(document.getElementById('i-days-expire').value)     || 0,
-        days_since_registration: parseFloat(document.getElementById('i-days-reg').value)     || 0,
-        city:                 parseFloat(document.getElementById('i-city').value)            || 1,
-        bd:                   parseFloat(document.getElementById('i-age').value)             || 25,
-        registered_via:       parseFloat(document.getElementById('i-reg').value)             || 4,
-        payment_method_id:    parseFloat(document.getElementById('i-pay-method').value)      || 1
-    };
+    // 1. Collect form values
+    const pc   = parseFloat(document.getElementById('i-payment-count').value)  || 0;
+    const tp   = parseFloat(document.getElementById('i-total-payment').value)   || 0;
+    const plp  = parseFloat(document.getElementById('i-plan-price').value)      || 149;
+    const aap  = parseFloat(document.getElementById('i-actual-paid').value)     || 149;
+    const arr  = parseFloat(document.getElementById('i-auto-renew-rate').value) || 0;
+    const cr   = parseFloat(document.getElementById('i-cancel-rate').value)     || 0;
+    const due  = parseFloat(document.getElementById('i-days-expire').value)     || 0;
+    const dsr  = parseFloat(document.getElementById('i-days-reg').value)        || 0;
+    const city = parseFloat(document.getElementById('i-city').value)            || 1;
+    const bd   = parseFloat(document.getElementById('i-age').value)             || 25;
+    const rv   = parseFloat(document.getElementById('i-reg').value)             || 4;
+    const pmid = parseFloat(document.getElementById('i-pay-method').value)      || 1;
 
-    // Derive a few helper columns the model may look for
-    features.avg_payment = features.payment_count > 0
-        ? features.total_payment / features.payment_count : 0;
-    features.is_auto_renew = features.auto_renew_rate >= 0.5 ? 1 : 0;
-    features.is_cancel     = features.cancel_rate    >= 0.5 ? 1 : 0;
+    // 2. Derive ALL 37 features the model expects from the 12 user inputs.
+    //    IMPORTANT: In the training data, the 30d/60d/90d window features are
+    //    relative to a fixed cutoff date. Loyal customers who paid ahead typically
+    //    have ALL ZEROS for these windows. We match that pattern here and let
+    //    the main features (payment_count, auto_renew_rate, days_until_expire)
+    //    drive the prediction — exactly as the model was trained.
+    const autoRenewCount = Math.round(pc * arr);
+    const cancelCount    = Math.round(pc * cr);
+
+    const features = {
+        // ── Direct from form ──
+        payment_count: pc,
+        total_payment: tp,
+        plan_list_price: plp,
+        actual_amount_paid: aap,
+        auto_renew_rate: arr,
+        cancel_rate: cr,
+        days_until_expire: due,
+        days_since_registration: dsr,
+        city: city,
+        bd: bd,
+        registered_via: rv,
+        payment_method_id: pmid,
+
+        // ── Derived aggregates ──
+        avg_payment: pc > 0 ? tp / pc : 0,
+        auto_renew_count: autoRenewCount,
+        cancel_count: cancelCount,
+        transaction_recency_days: Math.max(dsr - pc * 30, 0),
+
+        // ── 30d/60d/90d windows: set to 0 to match training data pattern ──
+        payment_count_30d: 0,   total_payment_30d: 0,
+        payment_count_60d: 0,   total_payment_60d: 0,
+        payment_count_90d: 0,   total_payment_90d: 0,
+        auto_renew_count_30d: 0, auto_renew_count_60d: 0, auto_renew_count_90d: 0,
+        cancel_count_30d: 0,     cancel_count_60d: 0,     cancel_count_90d: 0,
+        auto_renew_rate_30d: 0,  auto_renew_rate_60d: 0,  auto_renew_rate_90d: 0,
+        cancel_rate_30d: 0,      cancel_rate_60d: 0,      cancel_rate_90d: 0,
+
+        // ── Trends (no change) ──
+        payment_trend_30_60: 0,
+        payment_trend_30_90: 0,
+        cancel_trend_30_90:  0,
+    };
 
     // 2. Show a loading state while we wait for the API
     btn.disabled = true;

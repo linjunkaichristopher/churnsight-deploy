@@ -4,6 +4,7 @@ Cloud-deployable version — uses a bundled model (.joblib) and
 a CSV of batch predictions instead of MLflow + MySQL.
 """
 import os
+import json
 import pandas as pd
 import joblib
 from fastapi import FastAPI, HTTPException
@@ -15,6 +16,7 @@ from pydantic import BaseModel
 # ── Config ──────────────────────────────────────────────────
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "best_model.joblib")
 BATCH_CSV = os.path.join(os.path.dirname(__file__), "batch_predictions.csv")
+FEATURE_DEFAULTS_PATH = os.path.join(os.path.dirname(__file__), "feature_defaults.json")
 REGISTERED_MODEL_NAME = "kkbox-churn-model"
 
 app = FastAPI(
@@ -82,6 +84,22 @@ def get_batch_df():
             _batch_df = pd.DataFrame()
             print("No batch_predictions.csv found — batch endpoints will return empty.")
     return _batch_df
+
+
+# ── Load feature defaults (medians/modes from training data) ──
+_feature_defaults = None
+
+def get_feature_defaults():
+    global _feature_defaults
+    if _feature_defaults is None:
+        if os.path.exists(FEATURE_DEFAULTS_PATH):
+            with open(FEATURE_DEFAULTS_PATH) as f:
+                _feature_defaults = json.load(f)
+            print(f"Loaded {len(_feature_defaults)} feature defaults")
+        else:
+            _feature_defaults = {}
+            print("No feature_defaults.json found — will use 0 for missing features.")
+    return _feature_defaults
 
 
 # ── Helpers ────────────────────────────────────────────────
@@ -262,6 +280,8 @@ def predict_features(request: PredictRawFeaturesRequest):
     threshold = bundle["threshold"]
 
     expected = list(getattr(model, "feature_names_in_", []))
+    defaults = get_feature_defaults()
+
     if expected:
         feature_frame = feature_frame.drop(
             columns=[c for c in feature_frame.columns if c not in expected],
@@ -269,11 +289,14 @@ def predict_features(request: PredictRawFeaturesRequest):
         )
         for col in expected:
             if col not in feature_frame.columns:
-                feature_frame[col] = 0  # simple zero-fill for missing
+                # Use median/mode from training data, fall back to 0
+                feature_frame[col] = defaults.get(col, 0)
         feature_frame = feature_frame[expected]
 
-    # Fill NaN with 0 for numeric (safe default)
-    feature_frame = feature_frame.fillna(0)
+    # Fill any remaining NaN with training-data defaults
+    for col in feature_frame.columns:
+        if feature_frame[col].isna().any():
+            feature_frame[col] = feature_frame[col].fillna(defaults.get(col, 0))
 
     try:
         probs = model.predict_proba(feature_frame)[:, 1]

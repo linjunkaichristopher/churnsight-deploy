@@ -253,17 +253,88 @@ def latest_predictions(limit: int = 100):
     return PredictionListResponse(count=len(rows), predictions=rows)
 
 
+def _engineer_features(raw: dict) -> dict:
+    """
+    Build all 37 model-ready features from a small set of raw user inputs.
+
+    The frontend only needs to send the basic fields the user fills in.
+    This function derives all time-windowed and aggregate features that
+    the model expects, matching the patterns seen in the training data.
+    """
+    pc   = float(raw.get("payment_count", 0))
+    tp   = float(raw.get("total_payment", 0))
+    plp  = float(raw.get("plan_list_price", 149))
+    aap  = float(raw.get("actual_amount_paid", 149))
+    arr  = float(raw.get("auto_renew_rate", 0))
+    cr   = float(raw.get("cancel_rate", 0))
+    due  = float(raw.get("days_until_expire", 0))
+    dsr  = float(raw.get("days_since_registration", 0))
+    city = float(raw.get("city", 1))
+    bd   = float(raw.get("bd", 0))
+    rv   = float(raw.get("registered_via", 4))
+    pmid = float(raw.get("payment_method_id", 1))
+
+    return {
+        # Direct inputs
+        "payment_count": pc,
+        "total_payment": tp,
+        "plan_list_price": plp,
+        "actual_amount_paid": aap,
+        "auto_renew_rate": arr,
+        "cancel_rate": cr,
+        "days_until_expire": due,
+        "days_since_registration": dsr,
+        "city": city,
+        "bd": bd,
+        "registered_via": rv,
+        "payment_method_id": pmid,
+        # Derived aggregates
+        "avg_payment": tp / pc if pc > 0 else 0,
+        "auto_renew_count": round(pc * arr),
+        "cancel_count": round(pc * cr),
+        "transaction_recency_days": max(dsr - pc * 30, 0),
+        # 30d/60d/90d windows — set to 0 to match training data pattern
+        # (in the KKBOX dataset, these are relative to a cutoff date and
+        #  loyal customers who paid ahead have zeros here)
+        "payment_count_30d": 0, "total_payment_30d": 0,
+        "payment_count_60d": 0, "total_payment_60d": 0,
+        "payment_count_90d": 0, "total_payment_90d": 0,
+        "auto_renew_count_30d": 0, "auto_renew_count_60d": 0, "auto_renew_count_90d": 0,
+        "cancel_count_30d": 0, "cancel_count_60d": 0, "cancel_count_90d": 0,
+        "auto_renew_rate_30d": 0, "auto_renew_rate_60d": 0, "auto_renew_rate_90d": 0,
+        "cancel_rate_30d": 0, "cancel_rate_60d": 0, "cancel_rate_90d": 0,
+        # Trends (no change between windows)
+        "payment_trend_30_60": 0,
+        "payment_trend_30_90": 0,
+        "cancel_trend_30_90": 0,
+    }
+
+
 @app.post("/predict-features")
 def predict_features(request: PredictRawFeaturesRequest):
     if not request.features:
         raise HTTPException(status_code=400, detail="features list cannot be empty")
 
-    df = pd.DataFrame(request.features)
+    raw_rows = request.features
+    msno_list = [r.get("msno") for r in raw_rows]
+
+    # Check if this is a full-feature CSV upload (has 30d/60d/90d columns)
+    # vs a simple form submission (only basic fields)
+    sample = raw_rows[0]
+    is_full_feature = "payment_count_30d" in sample or "auto_renew_count_30d" in sample
+
+    if is_full_feature:
+        # CSV upload with all features — use as-is
+        df = pd.DataFrame(raw_rows)
+    else:
+        # Simple form inputs — engineer all features server-side
+        engineered = [_engineer_features(r) for r in raw_rows]
+        df = pd.DataFrame(engineered)
+
     if df.empty:
         raise HTTPException(status_code=400, detail="No valid feature rows provided")
 
-    msno_col = df["msno"] if "msno" in df.columns else None
-
+    # Drop non-feature columns
     feature_frame = df.drop(
         columns=["msno", "is_churn", "curated_timestamp", "_row_hash", "batch_id",
                  "ingestion_timestamp", "source_table", "scoring_timestamp",
@@ -289,7 +360,6 @@ def predict_features(request: PredictRawFeaturesRequest):
         )
         for col in expected:
             if col not in feature_frame.columns:
-                # Use median/mode from training data, fall back to 0
                 feature_frame[col] = defaults.get(col, 0)
         feature_frame = feature_frame[expected]
 
@@ -306,8 +376,9 @@ def predict_features(request: PredictRawFeaturesRequest):
 
     predictions = []
     for i, (prob, label) in enumerate(zip(probs, labels)):
+        msno_val = str(msno_list[i]) if msno_list[i] is not None else f"new_customer_{i}"
         predictions.append(PredictionRow(
-            msno=str(msno_col.iloc[i]) if msno_col is not None else f"new_customer_{i}",
+            msno=msno_val,
             predicted_label=int(label),
             churn_probability=round(float(prob), 4),
             model_version=str(bundle.get("model_version")),

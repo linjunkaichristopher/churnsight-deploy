@@ -294,8 +294,6 @@ def _engineer_features(raw: dict) -> dict:
         "cancel_count": round(pc * cr),
         "transaction_recency_days": max(dsr - pc * 30, 0),
         # 30d/60d/90d windows — set to 0 to match training data pattern
-        # (in the KKBOX dataset, these are relative to a cutoff date and
-        #  loyal customers who paid ahead have zeros here)
         "payment_count_30d": 0, "total_payment_30d": 0,
         "payment_count_60d": 0, "total_payment_60d": 0,
         "payment_count_90d": 0, "total_payment_90d": 0,
@@ -307,6 +305,10 @@ def _engineer_features(raw: dict) -> dict:
         "payment_trend_30_60": 0,
         "payment_trend_30_90": 0,
         "cancel_trend_30_90": 0,
+        # Date & demographic features the model also expects
+        "last_transaction_date": "2017-02-28",
+        "membership_expire_date": "2017-04-09",
+        "gender": "Unknown",
     }
 
 
